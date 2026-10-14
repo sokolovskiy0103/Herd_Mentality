@@ -84,7 +84,7 @@ dependencies {
 
     implementation("com.google.zxing:core:3.5.3")
 
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
