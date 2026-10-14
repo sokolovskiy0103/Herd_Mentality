@@ -97,7 +97,7 @@ class GameTest {
     @Test fun duplicateNamesGetSuffix() {
         val g = Game(QuestionBank(mapOf("light" to listOf("Q"))))
         g.join("Оля", null)
-        assertEquals("Оля 2", g.join("оля", null).name)
+        assertEquals("оля 2", g.join("оля", null).name)
     }
 
     @Test fun stateHidesAnswersWhileAnswering() {
