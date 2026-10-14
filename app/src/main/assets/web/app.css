@@ -62,7 +62,7 @@ button:disabled { opacity: .45; }
 button.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
 button.soft { background: var(--bg2); color: var(--text); }
 button.big { width: 100%; font-size: 18px; padding: 16px; }
-button.mini { min-height: 32px; padding: 4px 10px; font-size: 13px; border-radius: 10px; }
+button.mini { white-space: nowrap; min-height: 32px; padding: 4px 10px; font-size: 13px; border-radius: 10px; }
 button.danger { background: #8a2b45; }
 
 input[type=text] {

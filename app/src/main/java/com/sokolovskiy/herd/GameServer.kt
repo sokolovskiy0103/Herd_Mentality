@@ -173,7 +173,11 @@ class GameServer(private val context: Context) {
                 "move" -> game.move(m.optString("pid"), m.optInt("to", -1))
                 "confirm" -> if (!judging) game.confirm()
                 "next" -> if (game.phase == Game.Phase.RESULTS) game.nextQuestion()
-                "newGame" -> game.newGame()
+                "newGame" -> {
+                    judgeRun++          // drop any judging still in flight
+                    judging = false
+                    game.newGame()
+                }
                 "kick" -> game.remove(m.optString("pid"))
                 "downloadModel" -> judge.download()
                 "deleteModel" -> judge.deleteModel()

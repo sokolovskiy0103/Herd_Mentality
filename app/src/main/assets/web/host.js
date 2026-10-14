@@ -175,6 +175,9 @@
   function render() {
     if (!st) return;
     $('#ai').textContent = aiPill(st.ai);
+    const reset = $('#resetBtn');
+    reset.hidden = st.phase === 'LOBBY' || st.phase === 'GAMEOVER';
+    reset.textContent = armed === 'reset' ? 'Скинути все?' : '↺ Нова гра';
     let html = '', buttons = '';
     switch (st.phase) {
       case 'LOBBY':
