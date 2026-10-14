@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A simple cow head: white face, dark spots, pink muzzle. 108dp canvas, safe zone 66dp centered. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- horns -->
+    <path android:fillColor="#FFF4D6" android:pathData="M36,34 C30,30 29,24 32,21 C34,26 38,29 42,30 Z" />
+    <path android:fillColor="#FFF4D6" android:pathData="M72,34 C78,30 79,24 76,21 C74,26 70,29 66,30 Z" />
+    <!-- ears -->
+    <path android:fillColor="#FFFFFF" android:pathData="M30,42 C22,40 19,46 24,49 C28,51 33,48 35,46 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M78,42 C86,40 89,46 84,49 C80,51 75,48 73,46 Z" />
+    <!-- head -->
+    <path android:fillColor="#FFFFFF" android:pathData="M54,28 C68,28 76,38 76,52 C76,66 70,80 54,80 C38,80 32,66 32,52 C32,38 40,28 54,28 Z" />
+    <!-- spots -->
+    <path android:fillColor="#2B1B3D" android:pathData="M38,40 C42,34 50,36 48,42 C47,47 40,48 38,44 Z" />
+    <path android:fillColor="#2B1B3D" android:pathData="M66,34 C72,36 74,42 70,45 C67,47 63,42 64,38 Z" />
+    <!-- eyes -->
+    <path android:fillColor="#2B1B3D" android:pathData="M45,52 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
+    <path android:fillColor="#2B1B3D" android:pathData="M63,52 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
+    <!-- muzzle -->
+    <path android:fillColor="#FFB3CC" android:pathData="M54,60 C64,60 69,64 69,70 C69,76 63,80 54,80 C45,80 39,76 39,70 C39,64 44,60 54,60 Z" />
+    <path android:fillColor="#C23B6E" android:pathData="M48,69 m-2,0 a2,2 0,1 1,4 0 a2,2 0,1 1,-4 0" />
+    <path android:fillColor="#C23B6E" android:pathData="M60,69 m-2,0 a2,2 0,1 1,4 0 a2,2 0,1 1,-4 0" />
+</vector>
