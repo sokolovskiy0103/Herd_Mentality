@@ -53,6 +53,13 @@ object FuzzyMatcher {
         return meaningful.map(::stem).sorted().joinToString(" ")
     }
 
+    /** Set of stemmed meaningful words of an answer. */
+    fun stems(raw: String): Set<String> {
+        val tokens = normalize(raw).split(' ').filter { it.isNotEmpty() }
+        val meaningful = tokens.filter { it !in stopWords }.ifEmpty { tokens }
+        return meaningful.map(::stem).toSet()
+    }
+
     fun levenshtein(a: String, b: String): Int {
         if (a == b) return 0
         if (a.isEmpty()) return b.length

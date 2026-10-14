@@ -130,7 +130,6 @@ class GameServer(private val context: Context) {
         val m = try { JSONObject(text) } catch (_: Exception) { return }
         val t = m.optString("t")
         var toJudge: List<Pair<String, String>>? = null
-        var question = ""
         synchronized(lock) {
             when (t) {
                 // --- player (host can play too) ---
@@ -165,11 +164,9 @@ class GameServer(private val context: Context) {
                 "custom" -> if (game.phase == Game.Phase.QUESTION || game.phase == Game.Phase.RESULTS) game.customQuestion(m.optString("text"))
                 "reveal" -> if (game.phase == Game.Phase.QUESTION) {
                     toJudge = game.closeAnswers()
-                    question = game.question
                 }
                 "regroup" -> if (game.phase == Game.Phase.JUDGING) {
                     toJudge = game.answers.entries.filter { it.key in game.players }.map { it.key to it.value }
-                    question = game.question
                 }
                 "move" -> game.move(m.optString("pid"), m.optInt("to", -1))
                 "confirm" -> if (!judging) game.confirm()
@@ -180,28 +177,27 @@ class GameServer(private val context: Context) {
                     game.newGame()
                 }
                 "kick" -> game.remove(m.optString("pid"))
-                "downloadModel" -> judge.download()
-                "deleteModel" -> judge.deleteModel()
+                "autoGroup" -> judge.setEnabled(m.optBoolean("on", false))
             }
         }
-        toJudge?.let { runJudge(it, question) }
+        toJudge?.let { runJudge(it) }
         broadcast()
     }
 
-    private fun runJudge(list: List<Pair<String, String>>, question: String) {
+    private fun runJudge(list: List<Pair<String, String>>) {
         val run = synchronized(lock) { ++judgeRun }
         judging = true
         broadcast()
         scope.launch {
             val verdict = try {
-                judge.group(question, list.map { it.second })
+                judge.group(list.map { it.second })
             } catch (t: Throwable) {
                 Log.w(TAG, "judge crashed", t)
-                Judge.Verdict(FuzzyMatcher.group(list.map { it.second }), "fuzzy", null)
+                Judge.Verdict(FuzzyMatcher.group(list.map { it.second }), "fuzzy")
             }
             synchronized(lock) {
                 if (run == judgeRun) {
-                    game.applyGroups(list, verdict.groups, verdict.source, verdict.labels)
+                    game.applyGroups(list, verdict.groups, verdict.source)
                     judging = false
                 }
             }

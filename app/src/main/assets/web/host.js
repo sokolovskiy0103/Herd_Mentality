@@ -29,42 +29,41 @@
   // ---------- views ----------
 
   function aiPill(ai) {
-    if (!ai) return '';
+    if (!ai || !ai.enabled) return '';
     return {
-      READY: `🧠 Gemma`,
+      READY: `🧠 авторозподіл`,
       DOWNLOADING: `⬇ ${Math.round(ai.progress * 100)}%`,
-      LOADING: `🧠 завантаження…`,
-      ERROR: `⚠ ШІ`,
-      ABSENT: `без ШІ`,
+      LOADING: `🧠 …`,
+      ERROR: `⚠`,
     }[ai.state] || '';
   }
 
   function aiCard(ai) {
-    let body = '';
-    switch (ai.state) {
-      case 'ABSENT':
-        body = `<p class="muted small">Gemma 4 E2B прямо на цьому телефоні групує схожі відповіді: «тачка» = «машина». Розмір ≈2.6 ГБ, качається один раз — краще по Wi-Fi. Без неї працює простий автоматичний збіг, а спірне вирішуєш ти.</p>
-          <button class="soft" data-act="downloadModel">Завантажити Gemma</button>`;
-        break;
-      case 'DOWNLOADING':
-        body = `<div class="bar"><i style="width:${(ai.progress * 100).toFixed(1)}%"></i></div>
-          <p class="muted small">${esc(ai.message)}. Можна грати вже зараз — модель підключиться сама.</p>
-          <button class="mini ghost" data-act="deleteModel" data-confirm="cancelDl">${armed === 'cancelDl' ? 'Точно скасувати?' : 'Скасувати'}</button>`;
-        break;
-      case 'LOADING':
-        body = `<p><span class="spinner"></span> <span class="muted">${esc(ai.message)}</span></p>`;
-        break;
-      case 'READY':
-        body = `<p class="small">Готова, працює на ${esc(ai.backend)}.${ai.lastMillis ? ` Останнє судження: ${(ai.lastMillis / 1000).toFixed(1)} с.` : ''}</p>
-          <button class="mini ghost" data-act="deleteModel" data-confirm="delModel">${armed === 'delModel' ? 'Точно видалити?' : 'Видалити модель'}</button>`;
-        break;
-      case 'ERROR':
-        body = `<p class="small" style="color:var(--pink2)">${esc(ai.message)}</p>
-          <p class="muted small">Гра працює й без моделі.</p>
-          <button class="soft" data-act="downloadModel">Спробувати ще раз</button>`;
-        break;
+    if (!ai) return '';
+    let hint = 'Сам розкладає схожі відповіді по групах: «тачка» = «машина». Один раз потрібно завантажити ≈430 МБ — краще по Wi-Fi.';
+    if (ai.enabled) {
+      switch (ai.state) {
+        case 'DOWNLOADING':
+          hint = `<div class="bar"><i style="width:${(ai.progress * 100).toFixed(1)}%"></i></div>${esc(ai.message)}. Можна грати вже зараз — увімкнеться саме.`;
+          break;
+        case 'LOADING':
+          hint = `<span class="spinner"></span> ${esc(ai.message)}`;
+          break;
+        case 'READY':
+          hint = `Увімкнено.${ai.lastMillis ? ` Останній розбір: ${(ai.lastMillis / 1000).toFixed(1)} с.` : ''}`;
+          break;
+        case 'ERROR':
+          hint = `<span style="color:var(--pink2)">${esc(ai.message)}</span> Гра працює й без цього. <button class="mini soft" data-act="autoRetry">Ще раз</button>`;
+          break;
+      }
     }
-    return `<div class="card"><h2>🧠 Суддя Gemma</h2>${body}</div>`;
+    return `<div class="card stack">
+      <label class="row" style="gap:10px;cursor:pointer">
+        <input type="checkbox" data-act="autoGroup" ${ai.enabled ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--pink)">
+        <b class="grow">Авторозподіл відповідей</b>
+      </label>
+      <div class="muted small">${hint}</div>
+    </div>`;
   }
 
   function qrCard() {
@@ -145,11 +144,11 @@
   }
 
   function judgingView() {
-    const src = { gemma: '🧠 згрупувала Gemma', fuzzy: '🔤 автоматичний збіг', manual: '✋ виправлено вручну' }[st.groupSource] || '';
+    const src = { ai: '🧠 розподілено автоматично', fuzzy: '🔤 автоматичний збіг', manual: '✋ виправлено вручну' }[st.groupSource] || '';
     return `<div class="stack">
       <div class="question" style="font-size:20px">${esc(st.question)}</div>
       ${st.judging
-        ? `<div class="card flat center"><span class="spinner"></span> ${st.ai && st.ai.state === 'READY' ? 'Gemma групує відповіді…' : 'Групую відповіді…'}</div>`
+        ? `<div class="card flat center"><span class="spinner"></span> ${'Групую відповіді…'}</div>`
         : `<div class="muted small">${src}. ${selected ? '<b style="color:var(--yellow)">Тепер тапни групу, куди перенести.</b>' : 'Не згоден? Тапни відповідь, потім групу.'}</div>`}
       <div class="stack" id="groups">${groupsHtml(st, { selectable: !st.judging, selected })}</div>
       ${selected ? `<button class="ghost" data-act="newGroup" style="width:100%">＋ В окрему групу</button>` : ''}
@@ -222,6 +221,8 @@
     armed = null;
     switch (name) {
       case 'nextUrl': urlIdx++; render(); break;
+      case 'autoGroup': sock.send({ t: 'autoGroup', on: !(st.ai && st.ai.enabled) }); break;
+      case 'autoRetry': sock.send({ t: 'autoGroup', on: true }); break;
       case 'anon': sock.send({ t: 'anonymous', on: !st.anonymous }); break;
       case 'targetUp': sock.send({ t: 'target', target: st.target + 1 }); break;
       case 'targetDown': sock.send({ t: 'target', target: st.target - 1 }); break;

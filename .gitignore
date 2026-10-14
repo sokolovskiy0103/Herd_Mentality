@@ -6,3 +6,7 @@ local.properties
 .DS_Store
 captures/
 .kotlin/
+
+# eval scratch
+eval/*.pkl
+__pycache__/

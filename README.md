@@ -7,7 +7,7 @@ Party game for a group of friends. The host's Android phone runs everything; pla
 - **Host app (APK)** starts a small web server on the phone and shows a QR code with `http://<phone-ip>:8080/`.
 - **Players** must be on the same Wi-Fi as the host, or connected to the host phone's hotspot. They scan once and stay connected for the whole game.
 - Everyone answers the same question. The single biggest group gets a cow each; a tie for biggest scores nobody. If exactly one player is alone with their answer, they take the **pink cow** and can't win while holding it. First to N cows (default 8) without the pink cow wins.
-- **Judge:** Gemma 4 E2B runs on the host phone (LiteRT-LM, GPU with CPU fallback) and groups answers that mean the same thing. It is downloaded once from Hugging Face (~2.6 GB) from the host screen. Without it, a conservative fuzzy matcher groups obvious matches. Either way the host can move any answer between groups before scoring.
+- **Auto-grouping (optional):** a tick-box on the host screen. Two small ONNX models run on the host phone (a multilingual sentence encoder + an NLI cross-encoder, ~430 MB downloaded once from the `judge-v1` release) and group answers that mean the same thing ("тачка" = "машина", "вбиральня" = "туалет"). Without it, a conservative fuzzy matcher groups obvious matches. Either way the host can move any answer between groups before scoring.
 - Three question levels: light, spicy, 18+. The host can also type a custom question.
 
 ## Build
@@ -20,7 +20,12 @@ The signing key is committed on purpose (hobby app) so each new APK installs ove
 ## Code map
 
 - `app/src/main/java/.../Game.kt` — rules and state
-- `FuzzyMatcher.kt`, `JudgePrompt.kt`, `Judge.kt` — answer grouping
+- `FuzzyMatcher.kt`, `AnswerRules.kt`, `Unigram.kt`, `Judge.kt` — answer grouping (fuzzy fallback, rules + clustering, tokenizer, ONNX models)
+- `eval/` — grouping benchmark (`cases.json`), reference pipeline and `export_models.py` that builds the model archive
 - `GameServer.kt` — Ktor HTTP + WebSocket server
 - `GameService.kt` — foreground service keeping the server alive
 - `app/src/main/assets/web/` — host and player pages, question pack
+
+## Grouping model archive
+
+`Judge.kt` downloads `herd-judge-v1.zip` from the `judge-v1` (pre-)release of this repo. It is built by `eval/export_models.py` (pruned vocabularies, int8 encoder, fp16 NLI) and contains `embed.onnx`, `embed.vocab`, `nli.onnx`, `nli.vocab`. Benchmark: `python eval/run_eval.py ...`, reference pipeline `eval/ref_pipeline.py` (pairwise F1 ≈ 0.76 on `eval/cases.json`, vs ≈ 0.40 for the previous Gemma judge).

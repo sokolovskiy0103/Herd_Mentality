@@ -141,7 +141,7 @@ class GameTest {
         ids.zip(listOf("тачка", "в авто", "пиво")).forEach { (id, a) -> g.submitAnswer(id, a) }
         val judged = g.closeAnswers()
         val labels = listOf("машина", "машина", "пиво")
-        g.applyGroups(judged, JudgePrompt.groupByLabel(labels), "gemma", labels)
+        g.applyGroups(judged, listOf(listOf(0, 1), listOf(2)), "ai", labels)
         val first = g.stateJson(null, true).getJSONArray("groups").getJSONObject(0)
         assertEquals("машина", first.getString("label"))
         assertEquals(2, first.getJSONArray("members").length())
