@@ -14,6 +14,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : ComponentActivity() {
 
@@ -42,7 +44,20 @@ class MainActivity : ComponentActivity() {
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) = false
             }
         }
-        setContentView(web)
+        val root = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#1B1230"))
+            addView(web, android.widget.FrameLayout.LayoutParams(-1, -1))
+        }
+        setContentView(root)
+
+        // Android 15 draws apps edge-to-edge: keep the page clear of the status bar,
+        // navigation bar and keyboard.
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            WindowInsetsCompat.CONSUMED
+        }
 
         startForegroundService(Intent(this, GameService::class.java))
 

@@ -92,8 +92,8 @@ function groupsHtml(st, { selectable = false, selected = null } = {}) {
         <span class="count">${g.members.length} ${win ? cow(false) : ''}</span>
       </div>
       <div>${g.members.map(m => `
-        <span class="member ${st.me && st.me.id === m.id ? 'me' : ''} ${selected === m.id ? 'sel' : ''}" ${selectable ? `data-pid="${m.id}"` : ''}>
-          <span>${esc(m.text)}</span><span class="who">${esc(m.name)}</span>
+        <span class="member ${m.mine ? 'me' : ''} ${selected === m.id ? 'sel' : ''}" ${selectable ? `data-pid="${m.id}"` : ''}>
+          <span>${esc(m.text)}</span>${m.name ? `<span class="who">${esc(m.name)}</span>` : (m.mine ? '<span class="who">ти</span>' : '')}
         </span>`).join('')}
       </div>
     </div>`;

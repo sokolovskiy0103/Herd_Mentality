@@ -9,6 +9,7 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.SamplerConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -181,16 +182,18 @@ class Judge(private val context: Context, private val onChange: () -> Unit) {
 
     // ---------- judging ----------
 
+    class Verdict(val groups: List<List<Int>>, val source: String, val labels: List<String>?)
+
     /**
-     * Groups [answers]; returns index groups and the source ("gemma" or "fuzzy").
-     * Exact/near-exact matches from [FuzzyMatcher] are always merged on top of the model's
-     * answer, so a typo never splits a group even if the model misses it.
+     * Groups [answers] to [question]. The model labels each answer's meaning; answers with
+     * identical labels form a group. Near-identical spellings from [FuzzyMatcher] are always
+     * merged on top, so a typo never splits a group even if the model misses it.
      */
-    suspend fun group(question: String, answers: List<String>): Pair<List<List<Int>>, String> {
+    suspend fun group(question: String, answers: List<String>): Verdict {
         val fuzzy = FuzzyMatcher.group(answers)
-        if (answers.size < 2) return fuzzy to "fuzzy"
+        if (answers.size < 2) return Verdict(fuzzy, "fuzzy", null)
         val e = engine
-        if (state != State.READY || e == null) return fuzzy to "fuzzy"
+        if (state != State.READY || e == null) return Verdict(fuzzy, "fuzzy", null)
 
         val started = System.currentTimeMillis()
         val llm = withTimeoutOrNull(LLM_TIMEOUT_MS) {
@@ -200,6 +203,9 @@ class Judge(private val context: Context, private val onChange: () -> Unit) {
                         val conv = e.createConversation(
                             ConversationConfig(
                                 systemInstruction = Contents.of(JudgePrompt.SYSTEM),
+                                initialMessages = JudgePrompt.EXAMPLES.flatMap { (u, m) ->
+                                    listOf(Message.user(u), Message.model(m))
+                                },
                                 samplerConfig = SamplerConfig(topK = 1, topP = 1.0, temperature = 0.0),
                             )
                         )
@@ -213,8 +219,10 @@ class Judge(private val context: Context, private val onChange: () -> Unit) {
         }
         lastMillis = System.currentTimeMillis() - started
         Log.i(TAG, "LLM raw (${lastMillis}ms): $llm")
-        val parsed = llm?.let { JudgePrompt.parse(it, answers.size) } ?: return fuzzy to "fuzzy"
-        return mergeWith(parsed, fuzzy, answers.size) to "gemma"
+        val labels = llm?.let { JudgePrompt.parseLabels(it, answers.size) }
+            ?: return Verdict(fuzzy, "fuzzy", null)
+        val groups = mergeWith(JudgePrompt.groupByLabel(labels), fuzzy, answers.size)
+        return Verdict(groups, "gemma", labels)
     }
 
     private fun mergeWith(a: List<List<Int>>, b: List<List<Int>>, n: Int): List<List<Int>> {

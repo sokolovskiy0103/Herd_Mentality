@@ -99,7 +99,7 @@
     }
     if (r.pinkTo === me) return `<div class="banner bad ${pop}">${cow(true)}Ти відбився від стада — тримай рожеву корову</div>`;
     if ((r.scored || []).includes(me)) return `<div class="banner good ${pop}">${cow(false)}+1 корова! Ти в стаді</div>`;
-    if (!st.groups || !st.groups.some(g => g.members.some(m => m.id === me))) return `<div class="banner meh ${pop}">Ти не відповів цього раунду</div>`;
+    if (!st.groups || !st.groups.some(g => g.members.some(m => m.mine))) return `<div class="banner meh ${pop}">Ти не відповів цього раунду</div>`;
     return `<div class="banner meh ${pop}">Цього разу без корови</div>`;
   }
 

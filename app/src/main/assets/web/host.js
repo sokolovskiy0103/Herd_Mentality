@@ -106,6 +106,8 @@
       <div class="card stack">
         <h2>Відвертість</h2>
         <div class="chips">${['light', 'spicy', 'hot'].map(l => `<button class="chip ${lv.has(l) ? 'on' : ''}" data-level="${l}">${LEVELS[l]}</button>`).join('')}</div>
+        <button class="chip ${st.anonymous ? 'on' : ''}" data-act="anon" style="align-self:flex-start">${st.anonymous ? '🙈 Анонімні відповіді: так' : '👀 Анонімні відповіді: ні'}</button>
+        <div class="muted small">${st.anonymous ? 'Під час розбору видно тільки тексти, без імен. Хто в стаді, все одно стане видно з рахунку.' : 'Під час розбору біля кожної відповіді видно, хто її написав.'}</div>
         <div class="row"><span class="grow">Гра до</span>
           <button class="mini soft" data-act="targetDown">−</button>
           <b style="min-width:2ch;text-align:center">${st.target}</b>
@@ -220,6 +222,7 @@
     armed = null;
     switch (name) {
       case 'nextUrl': urlIdx++; render(); break;
+      case 'anon': sock.send({ t: 'anonymous', on: !st.anonymous }); break;
       case 'targetUp': sock.send({ t: 'target', target: st.target + 1 }); break;
       case 'targetDown': sock.send({ t: 'target', target: st.target - 1 }); break;
       case 'hostJoin': {

@@ -108,4 +108,42 @@ class GameTest {
         assertFalse(s.toString().contains("секрет"))
         assertEquals("секрет", g.stateJson(ids[0], false).getJSONObject("me").getString("answer"))
     }
+
+    @Test fun anonymousHidesNamesButHostCanStillMove() {
+        val (g, ids) = game("A", "B", "C")
+        g.anonymous = true
+        ids.zip(listOf("тачка", "машина", "пиво")).forEach { (id, a) -> g.submitAnswer(id, a) }
+        val judged = g.closeAnswers()
+        g.applyGroups(judged, FuzzyMatcher.group(judged.map { it.second }), "fuzzy")
+        val st = g.stateJson(ids[0], false)
+        val text = st.getJSONArray("groups").toString()
+        ids.forEach { assertFalse("player id leaked", text.contains(it)) }
+        listOf("\"A\"", "\"B\"", "\"C\"").forEach { assertFalse(text.contains(it)) }
+        assertTrue(text.contains("\"mine\":true"))
+        // host moves by token
+        val gs = st.getJSONArray("groups")
+        var tachkaToken = ""; var machineGroup = -1
+        for (i in 0 until gs.length()) {
+            val ms = gs.getJSONObject(i).getJSONArray("members")
+            for (j in 0 until ms.length()) {
+                val m = ms.getJSONObject(j)
+                if (m.getString("text") == "тачка") tachkaToken = m.getString("id")
+                if (m.getString("text") == "машина") machineGroup = i
+            }
+        }
+        g.move(tachkaToken, machineGroup)
+        g.confirm()
+        assertEquals(1, g.players[ids[0]]!!.score)
+    }
+
+    @Test fun modelMeaningBecomesGroupTitle() {
+        val (g, ids) = game("A", "B", "C")
+        ids.zip(listOf("тачка", "в авто", "пиво")).forEach { (id, a) -> g.submitAnswer(id, a) }
+        val judged = g.closeAnswers()
+        val labels = listOf("машина", "машина", "пиво")
+        g.applyGroups(judged, JudgePrompt.groupByLabel(labels), "gemma", labels)
+        val first = g.stateJson(null, true).getJSONArray("groups").getJSONObject(0)
+        assertEquals("машина", first.getString("label"))
+        assertEquals(2, first.getJSONArray("members").length())
+    }
 }

@@ -79,6 +79,11 @@ class Game(private val bank: QuestionBank, private val rnd: Random = Random.Defa
     var groups: MutableList<MutableList<String>> = mutableListOf()
         private set
     var groupSource = ""
+    /** playerId -> what the judge model thinks the answer means (shown as group title) */
+    val meanings = HashMap<String, String>()
+    /** Hide who wrote which answer; members are addressed by per-round tokens. */
+    var anonymous = false
+    private val tokens = HashMap<String, String>()   // playerId -> token
     var result: Result? = null
         private set
     var pinkCow: String? = null
@@ -147,6 +152,7 @@ class Game(private val bank: QuestionBank, private val rnd: Random = Random.Defa
         question = q
         questionLevel = level
         answers.clear()
+        meanings.clear()
         groups = mutableListOf()
         groupSource = ""
         result = null
@@ -166,12 +172,21 @@ class Game(private val bank: QuestionBank, private val rnd: Random = Random.Defa
         val list = answers.entries.filter { it.key in players }.map { it.key to it.value }
         groups = list.map { mutableListOf(it.first) }.toMutableList()
         groupSource = "pending"
+        tokens.clear()
+        list.forEach { tokens[it.first] = UUID.randomUUID().toString().take(10) }
         return list
     }
 
     /** Apply groups from a judge: index groups into [judged]. */
-    fun applyGroups(judged: List<Pair<String, String>>, idxGroups: List<List<Int>>, source: String) {
+    fun applyGroups(
+        judged: List<Pair<String, String>>,
+        idxGroups: List<List<Int>>,
+        source: String,
+        labels: List<String>? = null,
+    ) {
         if (phase != Phase.JUDGING) return
+        meanings.clear()
+        labels?.forEachIndexed { i, l -> if (i in judged.indices && !l.startsWith("#")) meanings[judged[i].first] = l }
         val seen = HashSet<Int>()
         val out = mutableListOf<MutableList<String>>()
         for (g in idxGroups) {
@@ -190,8 +205,14 @@ class Game(private val bank: QuestionBank, private val rnd: Random = Random.Defa
     }
 
     /** Host moves a player's answer to group [toGroup] (index), or to a new group when -1. */
-    fun move(playerId: String, toGroup: Int) {
+    /** Accepts a playerId or an anonymous answer token. */
+    fun resolveMember(idOrToken: String): String =
+        if (idOrToken in players) idOrToken
+        else tokens.entries.firstOrNull { it.value == idOrToken }?.key ?: idOrToken
+
+    fun move(member: String, toGroup: Int) {
         if (phase != Phase.JUDGING) return
+        val playerId = resolveMember(member)
         val from = groups.indexOfFirst { playerId in it }
         if (from < 0 || from == toGroup) return
         val target: MutableList<String>? = when {
@@ -259,6 +280,7 @@ class Game(private val bank: QuestionBank, private val rnd: Random = Random.Defa
         o.put("question", question)
         o.put("questionLevel", questionLevel)
         o.put("pinkCow", pinkCow ?: JSONObject.NULL)
+        o.put("anonymous", anonymous)
         val ps = JSONArray()
         for (p in players.values) {
             ps.put(JSONObject().apply {
@@ -277,11 +299,14 @@ class Game(private val bank: QuestionBank, private val rnd: Random = Random.Defa
             val gs = JSONArray()
             for (g in groups) {
                 val members = JSONArray()
-                for (id in g) {
+                // anonymous: no names, token ids, and an order that says nothing about who answered first
+                val ordered = if (anonymous) g.sortedBy { tokens[it] ?: it } else g
+                for (id in ordered) {
                     members.put(JSONObject().apply {
-                        put("id", id)
-                        put("name", players[id]?.name ?: "?")
+                        put("id", if (anonymous) (tokens[id] ?: "") else id)
+                        put("name", if (anonymous) "" else (players[id]?.name ?: "?"))
                         put("text", answers[id] ?: "")
+                        put("mine", id == me)
                     })
                 }
                 gs.put(JSONObject().apply {
@@ -315,6 +340,9 @@ class Game(private val bank: QuestionBank, private val rnd: Random = Random.Defa
     }
 
     private fun groupLabel(ids: List<String>): String {
+        // the model's meaning, when most of the group shares it
+        val m = ids.mapNotNull { meanings[it] }.groupingBy { it }.eachCount().maxByOrNull { it.value }
+        if (m != null && m.value * 2 > ids.size) return m.key
         val texts = ids.mapNotNull { answers[it] }
         if (texts.isEmpty()) return ""
         // most common normalised spelling, shown in its first original form

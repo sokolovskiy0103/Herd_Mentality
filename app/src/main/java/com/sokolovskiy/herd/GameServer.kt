@@ -158,6 +158,7 @@ class GameServer(private val context: Context) {
                     val arr = m.optJSONArray("levels") ?: JSONArray()
                     game.setLevels((0 until arr.length()).map { arr.getString(it) })
                 }
+                "anonymous" -> game.anonymous = m.optBoolean("on", false)
                 "target" -> game.target = m.optInt("target", 8).coerceIn(3, 20)
                 "start" -> game.start()
                 "skip" -> if (game.phase == Game.Phase.QUESTION) game.nextQuestion()
@@ -192,15 +193,15 @@ class GameServer(private val context: Context) {
         judging = true
         broadcast()
         scope.launch {
-            val (groups, source) = try {
+            val verdict = try {
                 judge.group(question, list.map { it.second })
             } catch (t: Throwable) {
                 Log.w(TAG, "judge crashed", t)
-                FuzzyMatcher.group(list.map { it.second }) to "fuzzy"
+                Judge.Verdict(FuzzyMatcher.group(list.map { it.second }), "fuzzy", null)
             }
             synchronized(lock) {
                 if (run == judgeRun) {
-                    game.applyGroups(list, groups, source)
+                    game.applyGroups(list, verdict.groups, verdict.source, verdict.labels)
                     judging = false
                 }
             }
