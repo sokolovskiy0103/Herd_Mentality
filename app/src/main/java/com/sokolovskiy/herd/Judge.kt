@@ -138,10 +138,10 @@ class Judge(private val context: Context, private val onChange: () -> Unit) {
                 when (status) {
                     DownloadManager.STATUS_SUCCESSFUL -> {
                         prefs.edit().remove("download").apply()
-                        dm.remove(id)
                         set(State.LOADING, "Розпаковую…")
-                        if (unpack(File(dir, PART_NAME))) load()
-                        else set(State.ERROR, "Файл пошкоджений, спробуй ще раз")
+                        val problem = unpack(File(dir, PART_NAME))
+                        dm.remove(id)       // removes the downloaded file too, so only after unpacking
+                        if (problem == null) load() else set(State.ERROR, problem)
                         return@launch
                     }
                     DownloadManager.STATUS_FAILED -> {
@@ -167,22 +167,27 @@ class Judge(private val context: Context, private val onChange: () -> Unit) {
         }
     }
 
-    /** Extracts only the known files from the archive, then removes it. */
-    private fun unpack(zip: File): Boolean = try {
-        modelDir.deleteRecursively(); modelDir.mkdirs()
-        ZipInputStream(zip.inputStream().buffered()).use { zin ->
-            while (true) {
-                val e = zin.nextEntry ?: break
-                val name = File(e.name).name
-                if (name !in FILES) continue
-                File(modelDir, name).outputStream().buffered().use { zin.copyTo(it) }
+    /** Extracts only the known files from the archive, then removes it. Returns null on success, else a reason. */
+    private fun unpack(zip: File): String? = try {
+        if (!zip.exists()) {
+            "Файл завантаження зник, спробуй ще раз"
+        } else {
+            modelDir.deleteRecursively(); modelDir.mkdirs()
+            ZipInputStream(zip.inputStream().buffered()).use { zin ->
+                while (true) {
+                    val e = zin.nextEntry ?: break
+                    val name = File(e.name).name
+                    if (name !in FILES) continue
+                    File(modelDir, name).outputStream().buffered().use { zin.copyTo(it) }
+                }
             }
+            zip.delete()
+            if (filesPresent()) null else "У завантаженому файлі бракує даних, спробуй ще раз"
         }
-        zip.delete()
-        filesPresent()
     } catch (t: Throwable) {
         Log.w(TAG, "unpack failed", t)
-        false
+        modelDir.deleteRecursively()
+        "Не вдалося розпакувати (можливо, мало місця): ${t.message?.take(80)}"
     }
 
     // ---------- load ----------
