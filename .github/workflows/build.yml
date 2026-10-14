@@ -12,9 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -23,11 +23,21 @@ jobs:
         with:
           gradle-version: 8.14.3
 
-      - name: Unit tests
-        run: gradle --no-daemon :app:testReleaseUnitTest
+      - name: Unit tests and release APK
+        run: |
+          set -o pipefail
+          gradle --no-daemon --console=plain :app:testReleaseUnitTest :app:assembleRelease 2>&1 | tee build.log
 
-      - name: Build release APK
-        run: gradle --no-daemon :app:assembleRelease
+      # Surface compiler/test errors as annotations so they are readable through the API.
+      - name: Report errors
+        if: failure()
+        run: |
+          {
+            grep -E "^e: |error:|FAILED|What went wrong|> |Caused by|expected:|Exception" build.log | head -60
+            for f in app/build/test-results/*/*.xml; do grep -A3 "<failure" "$f" 2>/dev/null | head -15; done
+          } > errors.txt || true
+          msg=$(sed 's/%/%25/g' errors.txt | awk '{printf "%s%%0A", $0}')
+          echo "::error title=Build errors::${msg}"
 
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk HerdMentality.apk
